@@ -1,53 +1,35 @@
 /**
  * @author mrdoob / http://mrdoob.com/
+ * @author Jesús Leganés Combarro "Piranna" <piranna@gmail.com>
  */
 
-var EventTarget = function () {
-
+var EventTarget = function()
+{
 	var listeners = {};
 
-	this.addEventListener = function ( type, listener ) {
+	this.addEventListener = function(type, listener)
+	{
+		if(listeners[type] === undefined)
+			listeners[type] = [];
 
-		if ( listeners[ type ] === undefined ) {
-
-			listeners[ type ] = [];
-
-		}
-
-		if ( listeners[ type ].indexOf( listener ) === - 1 ) {
-
-			listeners[ type ].push( listener );
-
-		}
-
+		if(listeners[type].indexOf(listener) === -1)
+			listeners[type].push(listener);
 	};
 
-	this.dispatchEvent = function ( event ) {
+	this.dispatchEvent = function(event)
+	{
+		var listenerArray = listeners[event.type];
 
-		var listenerArray = listeners[ event.type ];
-
-		if ( listenerArray !== undefined ) {
-
-			for ( var i = 0, l = listenerArray.length; i < l; i ++ ) {
-
-				listenerArray[ i ].call( this, event );
-
-			}
-
-		}
-
+		if(listenerArray !== undefined)
+			for(var i=0, l=listenerArray.length; i<l; i++)
+				listenerArray[i].call(this, event);
 	};
 
-	this.removeEventListener = function ( type, listener ) {
+	this.removeEventListener = function(type, listener)
+	{
+		var index = listeners[type].indexOf(listener);
 
-		var index = listeners[ type ].indexOf( listener );
-
-		if ( index !== - 1 ) {
-
-			listeners[ type ].splice( index, 1 );
-
-		}
-
+		if(index !== -1)
+			listeners[type].splice(index, 1);
 	};
-
 };
