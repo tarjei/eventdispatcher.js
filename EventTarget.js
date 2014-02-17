@@ -37,4 +37,4 @@ var EventTarget = function()
 	};
 };
 
-exports.EventTarget = EventTarget;
+module.exports = EventTarget;
