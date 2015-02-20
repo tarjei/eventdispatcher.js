@@ -3,7 +3,7 @@
  * @author Jesús Leganés Combarro "Piranna" <piranna@gmail.com>
  */
 
-var EventTarget = function()
+function EventTarget()
 {
   var listeners = {};
 
@@ -48,4 +48,6 @@ var EventTarget = function()
   };
 };
 
-module.exports = EventTarget;
+
+if(typeof module !== 'undefined' && module.exports)
+	module.exports = EventTarget;
