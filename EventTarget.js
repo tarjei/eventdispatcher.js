@@ -24,15 +24,44 @@ function EventTarget()
 
   this.dispatchEvent = function(event)
   {
+    if(event._dispatched) throw 'InvalidStateError'
+    event._dispatched = true
+
     var type = event.type
+    if(type == undefined || type == '') throw 'UNSPECIFIED_EVENT_TYPE_ERR'
+
     var listenerArray = (listeners[type] || []);
 
     var dummyListener = this['on' + type];
     if(typeof dummyListener == 'function')
       listenerArray = listenerArray.concat(dummyListener);
 
+    var stopImmediatePropagation = false
+
+    // [ToDo] Use read-only properties instead of attributes when availables
+    event.cancelable = true
+    event.defaultPrevented = false
+    event.isTrusted = false
+    event.preventDefault = function()
+    {
+      if(this.cancelable)
+        this.defaultPrevented = true
+    }
+    event.stopImmediatePropagation = function()
+    {
+      stopImmediatePropagation = true
+    }
+    event.target = this
+    event.timeStamp = new Date().getTime()
+
     for(var i=0,listener; listener=listenerArray[i]; i++)
+    {
+      if(stopImmediatePropagation) break
+
       listener.call(this, event);
+    }
+
+    return !event.defaultPrevented
   };
 
   this.removeEventListener = function(type, listener)
