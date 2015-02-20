@@ -1,40 +1,51 @@
 /**
- * @author mrdoob / http://mrdoob.com/
+ * @author mrdoob / http://mrdoob.com
  * @author Jesús Leganés Combarro "Piranna" <piranna@gmail.com>
  */
 
 var EventTarget = function()
 {
-	var listeners = {};
+  var listeners = {};
 
-	this.addEventListener = function(type, listener)
-	{
-		if(listeners[type] === undefined)
-			listeners[type] = [];
+  this.addEventListener = function(type, listener)
+  {
+		if(!listener) return
 
-		if(listeners[type].indexOf(listener) === -1)
-			listeners[type].push(listener);
-	};
+		var listeners_type = listeners[type]
+    if(listeners_type === undefined)
+      listeners[type] = listeners_type = [];
 
-	this.dispatchEvent = function(event)
-	{
-		var listenerArray = (listeners[event.type] || []);
+    if(listeners_type.indexOf(listener) === -1)
+      listeners_type.push(listener);
+  };
 
-		var dummyListener = this['on' + event.type];
-		if(typeof dummyListener == 'function')
-			listenerArray = listenerArray.concat(dummyListener);
+  this.dispatchEvent = function(event)
+  {
+		var type = event.type
+    var listenerArray = (listeners[type] || []);
 
-		for(var i=0, l=listenerArray.length; i<l; i++)
-			listenerArray[i].call(this, event);
-	};
+    var dummyListener = this['on' + type];
+    if(typeof dummyListener == 'function')
+      listenerArray = listenerArray.concat(dummyListener);
 
-	this.removeEventListener = function(type, listener)
-	{
-		var index = listeners[type].indexOf(listener);
+		for(var i=0,listener; listener=listenerArray[i]; i++)
+      listener.call(this, event);
+  };
 
-		if(index !== -1)
-			listeners[type].splice(index, 1);
-	};
+  this.removeEventListener = function(type, listener)
+  {
+		if(!listener) return
+
+		var listeners_type = listeners[type]
+		if(listeners_type === undefined) return
+
+    var index = listeners_type.indexOf(listener);
+    if(index !== -1)
+      listeners_type.splice(index, 1);
+
+		if(!listeners_type.length)
+			delete listeners[type]
+  };
 };
 
 module.exports = EventTarget;
