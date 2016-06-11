@@ -16,10 +16,23 @@
     "W3C"
   ],
   "author": "Mr. Doob (http://mrdoob.com)",
-  "contributors": ["Jesús Leganés Combarro <piranna@gmail.com>", "Brett Zamir"],
+  "contributors": [
+    "Jesús Leganés Combarro <piranna@gmail.com>",
+    "Brett Zamir"
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/ShareIt-project/EventTarget.js/issues"
   },
-  "homepage": "https://github.com/ShareIt-project/EventTarget.js"
+  "homepage": "https://github.com/ShareIt-project/EventTarget.js",
+  "dependencies": {},
+  "engines": {
+    "node": "^4.4.3"
+  },
+  "devDependencies": {
+    "eslint": "^2.12.0",
+    "eslint-config-standard": "^5.3.1",
+    "eslint-plugin-promise": "^1.3.2",
+    "eslint-plugin-standard": "^1.3.2"
+  }
 }
