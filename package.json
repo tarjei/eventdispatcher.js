@@ -25,10 +25,10 @@
     "url": "https://github.com/ShareIt-project/EventTarget.js/issues"
   },
   "homepage": "https://github.com/ShareIt-project/EventTarget.js",
-  "dependencies": {},
   "engines": {
     "node": "^4.4.3"
   },
+  "dependencies": {},
   "devDependencies": {
     "eslint": "^2.12.0",
     "eslint-config-standard": "^5.3.1",
