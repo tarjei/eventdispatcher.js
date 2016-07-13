@@ -123,6 +123,14 @@ The following are non-standard methods:
 
 ## Todos
 
+-   Consider refactoring so that all properties and methods are private and
+    all early/late/default listeners, parent retrieval, and option setting are
+    done at class creation time (dynamically). Remove `hasEventListener` as
+    it is necessarily run-time and non-standard.
+
+-   Refactor out the proxy in favor of just an adapter (since we have to clone
+    native event properties anyways in order to properly set `target`, etc.).
+
 -   Provide option for early, late, and default listeners to capture and
     bubble (will need to propagate independently of normal listeners).
 
