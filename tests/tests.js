@@ -49,7 +49,7 @@ testTypesArr.forEach(function (evClass) {
     var ev = newEvent('bubbl', {bubbles: true, cancelable: true});
     this.dispatchEvent(ev);
   };
-  CategoryTree.prototype.getParent = function () {
+  CategoryTree.prototype.__getParent = function () {
     return this._parent || null;
   };
   Object.assign(CategoryTree.prototype, EventTarget.prototype);
@@ -347,9 +347,9 @@ testTypesArr.forEach(function (evClass) {
           expect(capturedCategories).deep.equal(expected);
         });
         it('should capture whether `capture` option stated as boolean or object property', function (done) {
-          var parent = {getParent: function () { return null; }};
+          var parent = {__getParent: function () { return null; }};
           var child = {
-            getParent: function () {
+            __getParent: function () {
               return parent;
             }
           };
@@ -426,10 +426,10 @@ testTypesArr.forEach(function (evClass) {
           catTree.children[1].children[0].bubble(); // 'grandchildB1'
         });
         it('should get proper target, currentTarget, and eventPhase event properties when set', function (done) {
-          var grandparent = {getParent: function () { return null; }};
-          var parent = {getParent: function () { return grandparent; }};
+          var grandparent = {__getParent: function () { return null; }};
+          var parent = {__getParent: function () { return grandparent; }};
           var child = {
-            getParent: function () {
+            __getParent: function () {
               return parent;
             }
           };
@@ -608,9 +608,9 @@ testTypesArr.forEach(function (evClass) {
         car.start();
       });
       it('should not undergo capture or bubbling', function (done) {
-        var parent = {getParent: function () { return null; }};
+        var parent = {__getParent: function () { return null; }};
         var child = {
-          getParent: function () {
+          __getParent: function () {
             return parent;
           }
         };
@@ -701,9 +701,9 @@ testTypesArr.forEach(function (evClass) {
         car.start();
       });
       it('should not undergo capture or bubbling', function (done) {
-        var parent = {getParent: function () { return null; }};
+        var parent = {__getParent: function () { return null; }};
         var child = {
-          getParent: function () {
+          __getParent: function () {
             return parent;
           }
         };
@@ -929,9 +929,9 @@ testTypesArr.forEach(function (evClass) {
         car.start();
       });
       it('should not undergo capture or bubbling', function (done) {
-        var parent = {getParent: function () { return null; }};
+        var parent = {__getParent: function () { return null; }};
         var child = {
-          getParent: function () {
+          __getParent: function () {
             return parent;
           }
         };

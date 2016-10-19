@@ -296,14 +296,14 @@ var DOMException, Proxy, Event;
 
           eventProxy.eventPhase = phases.AT_TARGET; // Temporarily set before we invoke early listeners
           this.invokeCurrentListeners(this._earlyListeners, eventProxy, type);
-          if (!this.getParent) {
+          if (!this.__getParent) {
             eventProxy.eventPhase = phases.AT_TARGET;
             return this._dispatchEvent(eventProxy, false);
           }
 
           var par = this;
           var root = this;
-          while ((par = par.getParent()) !== null) {
+          while ((par = par.__getParent()) !== null) {
             par._child = root;
             root = par;
           }
@@ -335,11 +335,11 @@ var DOMException, Proxy, Event;
           if (eventProxy._stopPropagation) {
             return continueEventDispatch();
           }
-          var parent = this.getParent;
+          var parent = this.__getParent;
           if (!parent) {
             return continueEventDispatch();
           }
-          parent = this.getParent();
+          parent = this.__getParent();
           this.invokeCurrentListeners(this._listeners, eventProxy, type, true);
           if (!parent) {
             return continueEventDispatch();
