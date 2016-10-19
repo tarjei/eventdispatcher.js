@@ -121,6 +121,10 @@ The following are non-standard methods:
     listeners) (though `stopImmediatePropagation` may be used to prevent
     further execution of other late listeners).
 
+-   `getParent` - This method is not provided by `EventTarget` but can be
+    implemented for hierarchical events (those with bubbling and/or capturing)
+    and should itself return an `EventTarget` object.
+
 ## Todos
 
 -   Consider refactoring so that all properties and methods are private and
