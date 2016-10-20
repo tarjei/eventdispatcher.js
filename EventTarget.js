@@ -340,7 +340,7 @@ var DOMException, Proxy, Event;
             return continueEventDispatch();
           }
           parent = this.__getParent();
-          this.invokeCurrentListeners(this._listeners, eventProxy, type, true);
+          parent.invokeCurrentListeners(parent._listeners, eventProxy, type, true);
           if (!parent) {
             return continueEventDispatch();
           }
