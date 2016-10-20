@@ -335,15 +335,11 @@ var DOMException, Proxy, Event;
           if (eventProxy._stopPropagation) {
             return continueEventDispatch();
           }
-          var parent = this.__getParent;
+          var parent = this.__getParent && this.__getParent();
           if (!parent) {
             return continueEventDispatch();
           }
-          parent = this.__getParent();
           parent.invokeCurrentListeners(parent._listeners, eventProxy, type, true);
-          if (!parent) {
-            return continueEventDispatch();
-          }
           parent._defaultSync = me._defaultSync;
           return parent._dispatchEvent(eventProxy, false);
       }
