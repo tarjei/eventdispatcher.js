@@ -303,7 +303,7 @@ var DOMException, Proxy, Event;
 
           var par = this;
           var root = this;
-          while ((par = par.__getParent()) !== null) {
+          while (par.__getParent && (par = par.__getParent()) !== null) {
             par._child = root;
             root = par;
           }
