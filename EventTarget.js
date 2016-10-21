@@ -249,7 +249,9 @@ var DOMException, Proxy, Event;
           // Our own properties
           '_dispatched', '_stopImmediatePropagation', '_stopPropagation'
         ].concat(this._extraProperties || []).forEach(function (prop) {
-          eventProxy[prop] = ev[prop];
+          if (prop in ev) {
+            eventProxy[prop] = ev[prop];
+          }
         });
       }
 
