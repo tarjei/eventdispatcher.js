@@ -79,6 +79,10 @@ from using `preventDefault` even if the event passed to the target was
     propagation as per regular JavaScript behavior (unlike jQuery which stops
     propagation)).
 
+Note that if an error throws within one of the listeners, an `ErrorEvent` will
+be dispatched to `window` as expected. On Node, you can listen instead for
+`uncaughtException`.
+
 ## Custom methods
 
 The following are non-standard methods:
