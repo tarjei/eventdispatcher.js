@@ -127,6 +127,8 @@ The following are non-standard methods:
 
 ## Todos
 
+-   Support `worker.onerror`
+
 -   Consider refactoring so that all properties and methods are private and
     all early/late/default listeners, parent retrieval, and option setting are
     done at class creation time (dynamically). Remove `hasEventListener` as

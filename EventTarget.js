@@ -101,13 +101,36 @@ var DOMException, Proxy, Event;
     } catch (err) {
       var error = err;
       if (typeof err === 'string') {
-        error = 'Uncaught exception: ' + err;
+        error = new Error('Uncaught exception: ' + err);
       } else {
         error.message = 'Uncaught exception: ' + err.message;
       }
+      if (typeof window === 'undefined') {
+        setTimeout(function () { // Node won't be able to catch in this way if we throw in the main thread
+          throw error; // Let user listen to `process.on('uncaughtException', function(err) {});`
+        });
+        return;
+      }
+
       // See https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror
-      if (window.onerror) window.onerror(error.message, err.fileName, err.lineNumber, null, error);
-      console.log(err);
+      //   and https://github.com/w3c/IndexedDB/issues/49
+
+      // Note that a regular Event will properly trigger
+      //   `window.addEventListener('error')` handlers, but it will not trigger
+      //   `window.onerror` as per https://html.spec.whatwg.org/multipage/webappapis.html#handler-onerror
+      // Note also that the following line won't handle `window.addEventListener` handlers
+      //    if (window.onerror) window.onerror(error.message, err.fileName, err.lineNumber, error.columnNumber, error);
+
+      // `ErrorEvent` properly triggers `window.onerror` and `window.addEventListener('error')` handlers
+      var ev = new ErrorEvent('error', {
+        message: error.message || '',
+        filename: error.fileName || '',
+        lineno: error.lineNumber || 0,
+        colno: error.columnNumber || 0,
+        error: err
+      });
+      window.dispatchEvent(ev);
+      // console.log(err); // Should we auto-log for user?
     }
   }
 

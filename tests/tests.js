@@ -1033,5 +1033,66 @@ testTypesArr.forEach(function (evClass) {
         car.start();
       });
     });
+
+    describe('Error handling', function () {
+      if (typeof window === 'undefined') {
+        var listeners;
+        beforeEach(function () {
+          listeners = process.listeners('uncaughtException');
+          process.removeAllListeners('uncaughtException');
+        });
+
+        afterEach(function () {
+          listeners.forEach(function (listener) {
+            process.on('uncaughtException', listener);
+          });
+        });
+      }
+
+      it('should trigger window.onerror', function (done) {
+        var ct = 0;
+        var ct2 = 0;
+        function handler (err) {
+          if (ct === 0) {
+            expect(err.message).to.equal('Uncaught exception: Oops');
+          } else {
+            expect(err.message).to.equal('Uncaught exception: Oops again');
+            expect(ct).to.equal(1);
+            if (typeof window !== 'undefined') {
+              expect(ct2).to.equal(2);
+              window.removeEventListener('error', handler);
+            }
+            done();
+            return;
+          }
+          ct++;
+        }
+        if (typeof window === 'undefined') {
+          process.on('uncaughtException', handler);
+        } else {
+          window.onerror = function (msg) {
+            if (ct2 === 0) {
+              expect(msg).to.equal('Uncaught exception: Oops');
+            } else {
+              expect(msg).to.equal('Uncaught exception: Oops again');
+              expect(ct2).to.equal(1);
+            }
+            ct2++;
+          };
+          window.addEventListener('error', handler);
+        }
+
+        var car = new Car();
+        var func = function () {
+          throw 'Oops'; // eslint-disable-line no-throw-literal
+        };
+        var func2 = function () {
+          throw new Error('Oops again');
+        };
+        car.addEventListener('start', func);
+        car.addEventListener('start', func2);
+        car.start();
+      });
+    });
   });
 });
