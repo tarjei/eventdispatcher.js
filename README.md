@@ -80,17 +80,18 @@ from using `preventDefault` even if the event passed to the target was
     propagation)).
 
 Note that if an error throws within one of the listeners, an `ErrorEvent` will
-be dispatched to `window` as expected. On Node, you can listen instead for
-`uncaughtException`.
+be dispatched to `window` as expected, or, if on Node, you can listen instead
+for `uncaughtException`. Alternatively, you may implement your own
+`__userErrorEventHandler` method (see below).
 
 ## Custom methods
 
 The following are non-standard methods:
 
--   `setOptions` - Set custom options. Currently limited to `defaultSync` which
-    can be set to `true` to execute the default behaviors even before late
-    listeners and before `dispatchEvent` returns. Default listeners will
-    otherwise be triggered after `setTimeout(..., 0)`.
+-   `setOptions(optsObject)` - Set custom options. Currently limited to
+    `defaultSync` which can be set to `true` to execute the default behaviors
+    even before late listeners and before `dispatchEvent` returns. Default
+    listeners will otherwise be triggered after `setTimeout(..., 0)`.
 
 -   `hasEventListener(type, listener, options)` - Detects whether a given event
     listener exists
@@ -125,9 +126,20 @@ The following are non-standard methods:
     listeners) (though `stopImmediatePropagation` may be used to prevent
     further execution of other late listeners).
 
--   `__getParent` - This method is not provided by `EventTarget` but can be
-    implemented for hierarchical events (those with bubbling and/or capturing)
-    and should itself return an `EventTarget` object.
+-   `__getParent` - This method can be implemented by consumers to support
+    hierarchical events (those with bubbling and/or capturing). Should
+    itself return an `EventTarget` object.
+
+-   `__userErrorEventHandler(errorObj, triggerGlobalErrorEventCb)` - This
+    method can be implemented by consumers to override the default behavior
+    relating to triggering of a global `ErrorEvent` upon encountering exceptions
+    within handlers. Will be passed an object representing the thrown error
+    and a callback which can be invoked to trigger the usual global `ErrorEvent`
+    behavior. An example usage is for an IndexedDB transaction object which must
+    abort a transaction upon encountering an error in a user event handler. This
+    method could be used to implement the aborting or it could merely rethrow
+    the error object passed to it and allow the internal consuming code to
+    catch it and abort the transaction.
 
 ## Todos
 

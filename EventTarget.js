@@ -91,49 +91,6 @@ var DOMException, Proxy, Event;
     };
   }
 
-  function tryCatch (cb) {
-    try {
-      // Per MDN: Exceptions thrown by event handlers are reported
-      //  as uncaught exceptions; the event handlers run on a nested
-      //  callstack: they block the caller until they complete, but
-      //  exceptions do not propagate to the caller.
-      cb();
-    } catch (err) {
-      var error = err;
-      if (typeof err === 'string') {
-        error = new Error('Uncaught exception: ' + err);
-      } else {
-        error.message = 'Uncaught exception: ' + err.message;
-      }
-      if (typeof window === 'undefined') {
-        setTimeout(function () { // Node won't be able to catch in this way if we throw in the main thread
-          throw error; // Let user listen to `process.on('uncaughtException', function(err) {});`
-        });
-        return;
-      }
-
-      // See https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror
-      //   and https://github.com/w3c/IndexedDB/issues/49
-
-      // Note that a regular Event will properly trigger
-      //   `window.addEventListener('error')` handlers, but it will not trigger
-      //   `window.onerror` as per https://html.spec.whatwg.org/multipage/webappapis.html#handler-onerror
-      // Note also that the following line won't handle `window.addEventListener` handlers
-      //    if (window.onerror) window.onerror(error.message, err.fileName, err.lineNumber, error.columnNumber, error);
-
-      // `ErrorEvent` properly triggers `window.onerror` and `window.addEventListener('error')` handlers
-      var ev = new ErrorEvent('error', {
-        message: error.message || '',
-        filename: error.fileName || '',
-        lineno: error.lineNumber || 0,
-        colno: error.columnNumber || 0,
-        error: err
-      });
-      window.dispatchEvent(ev);
-      // console.log(err); // Should we auto-log for user?
-    }
-  }
-
   function getListenersOptions (listeners, type, options) {
     var listenersByType = listeners[type];
     if (listenersByType === undefined) listeners[type] = listenersByType = [];
@@ -383,7 +340,7 @@ var DOMException, Proxy, Event;
         if (i === dummyIPos && typeof onListener === 'function') {
           // We don't splice this in as could be overwritten; executes here per
           //  https://html.spec.whatwg.org/multipage/webappapis.html#event-handler-attributes:event-handlers-14
-          tryCatch(function () {
+          this.tryCatch(function () {
             var ret = onListener.call(eventProxy.currentTarget, eventProxy);
             if (ret === false) {
               eventProxy.preventDefault();
@@ -401,7 +358,7 @@ var DOMException, Proxy, Event;
           (!capture && eventProxy.target !== eventProxy.currentTarget && eventProxy.eventPhase === phases.BUBBLING_PHASE))
         ) {
           var listener = listenerObj.listener;
-          tryCatch(function () {
+          this.tryCatch(function () {
             listener.call(eventProxy.currentTarget, eventProxy);
           });
           if (once) {
@@ -409,7 +366,7 @@ var DOMException, Proxy, Event;
           }
         }
       }, this);
-      tryCatch(function () {
+      this.tryCatch(function () {
         var onListener = checkOnListeners ? me['on' + type] : null;
         if (typeof onListener === 'function' && listenersByType.length < 2) {
           var ret = onListener.call(eventProxy.currentTarget, eventProxy); // Won't have executed if too short
@@ -420,6 +377,63 @@ var DOMException, Proxy, Event;
       });
 
       return !eventProxy.defaultPrevented;
+    },
+    tryCatch: function (cb) {
+      try {
+        // Per MDN: Exceptions thrown by event handlers are reported
+        //  as uncaught exceptions; the event handlers run on a nested
+        //  callstack: they block the caller until they complete, but
+        //  exceptions do not propagate to the caller.
+        cb();
+      } catch (err) {
+        this.triggerErrorEvent(err);
+      }
+    },
+    triggerErrorEvent: function (err) {
+      var error = err;
+      if (typeof err === 'string') {
+        error = new Error('Uncaught exception: ' + err);
+      } else {
+        error.message = 'Uncaught exception: ' + err.message;
+      }
+
+      var triggerGlobalErrorEvent;
+      if (typeof window === 'undefined') {
+        triggerGlobalErrorEvent = function () {
+          setTimeout(function () { // Node won't be able to catch in this way if we throw in the main thread
+            // console.log(err); // Should we auto-log for user?
+            throw error; // Let user listen to `process.on('uncaughtException', function(err) {});`
+          });
+        };
+      } else {
+        triggerGlobalErrorEvent = function () {
+          // See https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror
+          //   and https://github.com/w3c/IndexedDB/issues/49
+
+          // Note that a regular Event will properly trigger
+          //   `window.addEventListener('error')` handlers, but it will not trigger
+          //   `window.onerror` as per https://html.spec.whatwg.org/multipage/webappapis.html#handler-onerror
+          // Note also that the following line won't handle `window.addEventListener` handlers
+          //    if (window.onerror) window.onerror(error.message, err.fileName, err.lineNumber, error.columnNumber, error);
+
+          // `ErrorEvent` properly triggers `window.onerror` and `window.addEventListener('error')` handlers
+          var ev = new ErrorEvent('error', {
+            error: err,
+            message: error.message || '',
+            // We can't get the actually useful user's values!
+            filename: error.fileName || '',
+            lineno: error.lineNumber || 0,
+            colno: error.columnNumber || 0
+          });
+          window.dispatchEvent(ev);
+          // console.log(err); // Should we auto-log for user?
+        };
+      }
+      if (this.__userErrorEventHandler) {
+        this.__userErrorEventHandler(error, triggerGlobalErrorEvent);
+      } else {
+        triggerGlobalErrorEvent();
+      }
     }
   });
 
