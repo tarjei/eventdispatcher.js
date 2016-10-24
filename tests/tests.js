@@ -6,6 +6,7 @@ if (typeof Event !== 'undefined') {
 } else {
   testTypesArr = ['polyfill'];
 }
+
 testTypesArr.forEach(function (evClass) {
   function newEvent (type, evInit) {
     return (evClass === 'nativeEvent'
@@ -1092,6 +1093,53 @@ testTypesArr.forEach(function (evClass) {
         car.addEventListener('start', func);
         car.addEventListener('start', func2);
         car.start();
+      });
+      it('should trigger `__userErrorEventHandler`', function (done) {
+        function handler () {
+          expect(true).to.be.false;
+          if (typeof window !== 'undefined') {
+            window.removeEventListener('error', handler);
+          }
+          done();
+          return;
+        }
+        if (typeof window === 'undefined') {
+          process.on('uncaughtException', handler);
+        } else {
+          window.onerror = function (msg) {
+            expect(true).to.be.false;
+          };
+          window.addEventListener('error', handler);
+        }
+
+        var car = new Car();
+        var func = function () {
+          throw 'Oops'; // eslint-disable-line no-throw-literal
+        };
+        var func2 = function () {
+          throw new Error('Oops again');
+        };
+        var errCt = 0;
+        Car.prototype.__userErrorEventHandler = function (errorObj, triggerGlobalErrorEventCb) {
+          errCt++;
+          if (errCt > 2) {
+            return;
+          }
+          if (errCt === 1) {
+            expect(errorObj.message).to.equal('Uncaught exception: Oops');
+          } else {
+            expect(errorObj.message).to.equal('Uncaught exception: Oops again');
+            if (typeof window !== 'undefined') {
+              window.removeEventListener('error', handler);
+            }
+            done();
+          }
+        };
+        car.addEventListener('start1', func);
+        car.addEventListener('start1', func2);
+
+        var ev = newEvent('start1');
+        car.dispatchEvent(ev);
       });
     });
   });
