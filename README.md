@@ -139,7 +139,11 @@ The following are non-standard methods:
     abort a transaction upon encountering an error in a user event handler. This
     method could be used to implement the aborting or it could merely rethrow
     the error object passed to it and allow the internal consuming code to
-    catch it and abort the transaction.
+    catch it and abort the transaction. If using this handler, you should ideally
+    use a flag in your calling code and utilize that in this handler in order to
+    distinguish between your own specific internal error events and those dispatched
+    by users in their own `dispatchEvent` calls (which shouldn't ever throw
+    as that would be non-standard for the real `EventTarget`).
 
 ## Todos
 
