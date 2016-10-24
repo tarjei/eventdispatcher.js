@@ -143,7 +143,7 @@ var DOMException, Proxy, Event;
   };
 
   function EventTarget (customOptions) {
-    this.setOptions(customOptions);
+    this.__setOptions(customOptions);
   }
 
   Object.assign(EventTarget.prototype, ['Early', '', 'Late', 'Default'].reduce(function (obj, listenerType) {
@@ -161,7 +161,7 @@ var DOMException, Proxy, Event;
   }, {}));
 
   Object.assign(EventTarget.prototype, {
-    setOptions: function (customOptions) {
+    __setOptions: function (customOptions) {
       customOptions = customOptions || {};
       this._defaultSync = customOptions.defaultSync;
       this._extraProperties = customOptions.extraProperties;

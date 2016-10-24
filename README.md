@@ -51,7 +51,7 @@ car.start();
 ## Constructor
 
 If you inherit from `EventTarget`, you can invoke the (non-standard)
-constructor with options. See `setOptions`.
+constructor with options. See `__setOptions`.
 
 ## Standard methods
 
@@ -88,7 +88,7 @@ for `uncaughtException`. Alternatively, you may implement your own
 
 The following are non-standard methods:
 
--   `setOptions(optsObject)` - Set custom options. Currently limited to
+-   `__setOptions(optsObject)` - Set custom options. Currently limited to
     `defaultSync` which can be set to `true` to execute the default behaviors
     even before late listeners and before `dispatchEvent` returns. Default
     listeners will otherwise be triggered after `setTimeout(..., 0)`.

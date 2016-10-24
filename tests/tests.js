@@ -643,7 +643,7 @@ testTypesArr.forEach(function (evClass) {
           ['childB', [['grandchildB1'], ['grandchildB2']]]
         ]);
         var ranDefault = false;
-        catTree.children[1].children[0].setOptions({defaultSync: true});
+        catTree.children[1].children[0].__setOptions({defaultSync: true});
         catTree.children[1].children[0].addEarlyEventListener('capt', function (e) {
           e.stopPropagation();
           e.preventDefault();
@@ -712,7 +712,7 @@ testTypesArr.forEach(function (evClass) {
         Object.assign(child, EventTarget.prototype);
         var caught1 = false;
         var caught2 = false;
-        child.setOptions({defaultSync: true});
+        child.__setOptions({defaultSync: true});
         child.addLateEventListener('type1', function () {
           expect(caught1).to.be.false;
           expect(caught2).to.be.false;
@@ -734,7 +734,7 @@ testTypesArr.forEach(function (evClass) {
         var car = new Car();
         var actual = [];
         var expected = [1, 2];
-        car.setOptions({defaultSync: true});
+        car.__setOptions({defaultSync: true});
         car.addDefaultEventListener('start', function (e) {
           actual.push(1);
         });
@@ -777,7 +777,7 @@ testTypesArr.forEach(function (evClass) {
       });
       it('should allow stopping propagation when sync to late listeners', function (done) {
         var car = new Car();
-        car.setOptions({defaultSync: true});
+        car.__setOptions({defaultSync: true});
         var ranLateEventListener = false;
         var ranNormalEventListener = false;
         var ranEarlyEventListener = false;
@@ -879,7 +879,7 @@ testTypesArr.forEach(function (evClass) {
       it('should occur before late listeners with custom `defaultSync` option set to true', function (done) {
         var car = new Car();
         var ct = 0;
-        car.setOptions({defaultSync: true});
+        car.__setOptions({defaultSync: true});
         car.addDefaultEventListener('start', function () {
           ct++;
           expect(ct).equal(1);
@@ -911,7 +911,7 @@ testTypesArr.forEach(function (evClass) {
       it('should trigger after other event listener types (except asynchronous defaults)', function (done) {
         var car = new Car();
         var ct = 0;
-        car.setOptions({defaultSync: true});
+        car.__setOptions({defaultSync: true});
         car.addDefaultEventListener('start', function () {
           ct++;
           expect(ct).equal(3);
@@ -965,7 +965,7 @@ testTypesArr.forEach(function (evClass) {
         var ranDefaultEventListener = false;
         var ranNormalEventListener = false;
         var ranEarlyEventListener = false;
-        car.setOptions({defaultSync: true});
+        car.__setOptions({defaultSync: true});
         car.addLateEventListener('start', function (e) {
           e.stopPropagation();
           e.preventDefault();
