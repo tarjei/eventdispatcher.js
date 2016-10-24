@@ -12,7 +12,7 @@ var DOMException, Proxy, Event;
   };
 
   if (typeof DOMException === 'undefined') {
-    DOMException = function (msg, name) {
+    DOMException = function (msg, name) { // No need for `toString` as same as for `Error`
       var err = new Error(msg);
       err.name = name;
       return err;
@@ -39,6 +39,10 @@ var DOMException, Proxy, Event;
     AT_TARGET: {writable: false, value: 2},
     BUBBLING_PHASE: {writable: false, value: 3}
   });
+  EventPolyfill.prototype.toString = function () {
+    return '[object Event]';
+  };
+
   function copyEvent (ev) {
     return new EventPolyfill(ev.type, {bubbles: ev.bubbles, cancelable: ev.cancelable});
   }
