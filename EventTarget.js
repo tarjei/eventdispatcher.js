@@ -163,6 +163,7 @@ var DOMException, Proxy, Event;
   Object.assign(EventTarget.prototype, {
     __setOptions: function (customOptions) {
       customOptions = customOptions || {};
+      // Todo: Make into event properties?
       this._defaultSync = customOptions.defaultSync;
       this._extraProperties = customOptions.extraProperties;
     },
@@ -242,6 +243,7 @@ var DOMException, Proxy, Event;
       function finishEventDispatch () {
         eventProxy.eventPhase = phases.NONE;
         eventProxy.currentTarget = null;
+        delete eventProxy._children;
       }
       function invokeDefaults () {
         // Ignore stopPropagation from defaults
@@ -290,7 +292,10 @@ var DOMException, Proxy, Event;
           var par = this;
           var root = this;
           while (par.__getParent && (par = par.__getParent()) !== null) {
-            par._child = root;
+            if (!eventProxy._children) {
+              eventProxy._children = [];
+            }
+            eventProxy._children.push(root);
             root = par;
           }
           root._defaultSync = me._defaultSync;
@@ -301,7 +306,7 @@ var DOMException, Proxy, Event;
             return continueEventDispatch();
           }
           this.invokeCurrentListeners(this._listeners, eventProxy, type);
-          var child = this._child;
+          var child = eventProxy._children && eventProxy._children.length && eventProxy._children.pop();
           if (!child || child === eventProxy.target) {
             eventProxy.eventPhase = phases.AT_TARGET;
           }
@@ -354,7 +359,7 @@ var DOMException, Proxy, Event;
         var options = listenerObj.options;
         var once = options.once; // Remove listener after invoking once
         var passive = options.passive; // Don't allow `preventDefault`
-        var capture = options.capture; // Use `_child` and set `eventPhase`
+        var capture = options.capture; // Use `_children` and set `eventPhase`
         eventProxy._passive = passive;
 
         if ((capture && eventProxy.target !== eventProxy.currentTarget && eventProxy.eventPhase === phases.CAPTURING_PHASE) ||
