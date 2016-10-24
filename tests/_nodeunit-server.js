@@ -1,5 +1,5 @@
 require('http').createServer(function (req, res) {
-  var extra = req.url === '/tests' ? '/index.html' : '';
+  var extra = req.url === '/tests' || req.url === '/tests/' ? '/index.html' : '';
   if (req.url[0] !== '/') req.url = 'tests/' + req.url;
   var filePath = '.' + req.url + extra;
   if (req.url.match(/.css$/)) res.setHeader('Content-Type', 'text/css');
