@@ -1120,7 +1120,7 @@ testTypesArr.forEach(function (evClass) {
           throw new Error('Oops again');
         };
         var errCt = 0;
-        Car.prototype.__userErrorEventHandler = function (errorObj, triggerGlobalErrorEventCb) {
+        car.__userErrorEventHandler = function (errorObj, triggerGlobalErrorEventCb) {
           errCt++;
           if (errCt > 2) {
             return;
