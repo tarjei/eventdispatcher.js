@@ -1,4 +1,4 @@
-var DOMException, Proxy, Event;
+var DOMException, Proxy, Event, ErrorEvent;
 (function () {
   'use strict';
 
@@ -16,6 +16,28 @@ var DOMException, Proxy, Event;
       var err = new Error(msg);
       err.name = name;
       return err;
+    };
+  }
+  if (typeof ErrorEvent === 'undefined') {
+    ErrorEvent = function (type, eventInitDict) {
+      EventPolyfill.call(this, type);
+      var def = {};
+      def.message = eventInitDict.message || '';
+      def.filename = eventInitDict.filename || '';
+      def.lineno = eventInitDict.lineno || 0;
+      def.colno = eventInitDict.colno || 0;
+      def.error = eventInitDict.error || null;
+
+      Object.defineProperties(this, ['message', 'filename', 'lineno', 'colno', 'error'].reduce(function (obj, prop) {
+        obj[prop] = {
+          enumerable: true,
+          configurable: true,
+          get: function () {
+            return def[prop];
+          }
+        };
+        return obj;
+      }, {}));
     };
   }
 
@@ -448,6 +470,7 @@ var DOMException, Proxy, Event;
 
   EventTarget.Event = Event;
   EventTarget.EventPolyfill = EventPolyfill;
+  EventTarget.ErrorEventPolyfill = ErrorEvent;
   EventTarget.ProxyPolyfill = ProxyPolyfill;
   EventTarget.DOMException = DOMException;
   EventTarget.Error = Error;
