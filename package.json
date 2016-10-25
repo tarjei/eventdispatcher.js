@@ -6,7 +6,8 @@
   "scripts": {
     "eslint": "eslint tests && eslint EventTarget.js",
     "test": "npm run eslint && mocha --require \"tests/_node-tests\" tests/tests",
-    "browser-test": "npm run eslint && node ./tests/_nodeunit-server"
+    "browser-test": "npm run eslint && node ./tests/_nodeunit-server",
+    "start": "npm run browser-test"
   },
   "repository": {
     "type": "git",

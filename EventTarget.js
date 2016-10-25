@@ -429,7 +429,7 @@ var DOMException, Proxy, Event, ErrorEvent;
       }
 
       var triggerGlobalErrorEvent;
-      if (typeof window === 'undefined') {
+      if (typeof window === 'undefined' || (window && typeof window === 'object' && !window.dispatchEvent)) {
         triggerGlobalErrorEvent = function () {
           setTimeout(function () { // Node won't be able to catch in this way if we throw in the main thread
             // console.log(err); // Should we auto-log for user?
