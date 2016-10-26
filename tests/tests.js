@@ -71,7 +71,7 @@ testTypesArr.forEach(function (evClass) {
         try {
           car.addEventListener(null, function (event) {});
         } catch (err) {
-          expect(err instanceof (typeof DOMException !== 'undefined' ? DOMException : EventTarget.Error)).to.be.true;
+          expect(err instanceof (typeof DOMException !== 'undefined' ? DOMException : Error)).to.be.true;
           expect(err.message).equal('UNSPECIFIED_EVENT_TYPE_ERR');
         }
       });
@@ -183,7 +183,7 @@ testTypesArr.forEach(function (evClass) {
         try {
           car.removeEventListener(null, function (event) {});
         } catch (err) {
-          expect(err instanceof (typeof DOMException !== 'undefined' ? DOMException : EventTarget.Error)).to.be.true;
+          expect(err instanceof (typeof DOMException !== 'undefined' ? DOMException : Error)).to.be.true;
           expect(err.message).equal('UNSPECIFIED_EVENT_TYPE_ERR');
         }
       });
@@ -278,7 +278,7 @@ testTypesArr.forEach(function (evClass) {
         try {
           car.dispatchEvent(ev);
         } catch (err) {
-          expect(err instanceof (typeof DOMException !== 'undefined' ? DOMException : EventTarget.Error)).to.be.true;
+          expect(err instanceof (typeof DOMException !== 'undefined' ? DOMException : Error)).to.be.true;
           expect(err.name).equal('InvalidStateError');
         }
       });
@@ -523,7 +523,7 @@ testTypesArr.forEach(function (evClass) {
           var car = new Car();
           car.hasEventListener(null, function (event) {});
         } catch (err) {
-          expect(err instanceof (typeof DOMException !== 'undefined' ? DOMException : EventTarget.Error)).to.be.true;
+          expect(err instanceof (typeof DOMException !== 'undefined' ? DOMException : Error)).to.be.true;
           expect(err.name).equal('UNSPECIFIED_EVENT_TYPE_ERR');
         }
       });

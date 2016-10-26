@@ -1,9 +1,7 @@
-var DOMException, Proxy, Event, ErrorEvent;
+var DOMException, ErrorEvent;
 (function () {
   'use strict';
 
-  var EventPolyfill;
-  var ProxyPolyfill;
   var phases = {
     NONE: 0,
     CAPTURING_PHASE: 1,
@@ -12,6 +10,7 @@ var DOMException, Proxy, Event, ErrorEvent;
   };
 
   if (typeof DOMException === 'undefined') {
+    // Todo: Better polyfill (if even needed here)
     DOMException = function (msg, name) { // No need for `toString` as same as for `Error`
       var err = new Error(msg);
       err.name = name;
@@ -20,7 +19,7 @@ var DOMException, Proxy, Event, ErrorEvent;
   }
   if (typeof ErrorEvent === 'undefined') {
     ErrorEvent = function (type, eventInitDict) {
-      EventPolyfill.call(this, type);
+      EventPolyfill.call(this, type, eventInitDict);
       var def = {};
       def.message = eventInitDict.message || '';
       def.filename = eventInitDict.filename || '';
@@ -30,8 +29,6 @@ var DOMException, Proxy, Event, ErrorEvent;
 
       Object.defineProperties(this, ['message', 'filename', 'lineno', 'colno', 'error'].reduce(function (obj, prop) {
         obj[prop] = {
-          enumerable: true,
-          configurable: true,
           get: function () {
             return def[prop];
           }
@@ -41,19 +38,71 @@ var DOMException, Proxy, Event, ErrorEvent;
     };
   }
 
-  EventPolyfill = function EventPolyfill (type, evInit, ev) { // eslint-disable-line no-native-reassign
+  var ev = new WeakMap();
+  var evCfg = new WeakMap();
+
+  // Todo: Set _ev argument outside of this function
+  var EventPolyfill = function EventPolyfill (type, evInit, _ev) { // eslint-disable-line no-native-reassign
+    if (!arguments.length) {
+      throw new TypeError("Failed to construct 'Event': 1 argument required, but only 0 present.");
+    }
     evInit = evInit || {};
-    Object.defineProperties(this, {
-      type: {writable: false, value: type},
-      target: {writable: false, value: null, configurable: true}, // Changeable by proxy
-      currentTarget: {writable: false, value: null, configurable: true}, // Changeable by proxy
-      eventPhase: {writable: false, value: 0, configurable: true}, // Changeable by proxy
-      bubbles: {writable: false, value: 'bubbles' in evInit ? evInit.bubbles : false},
-      cancelable: {writable: false, value: 'cancelable' in evInit ? evInit.cancelable : false},
-      defaultPrevented: {writable: false, value: false, configurable: true} // Changeable by proxy
-      // isTrusted: {writable: false, value: true}, // We are not always using this for user-created events
-      // timeStamp: {writable: false, value: new Date().valueOf()} // This is no longer a timestamp, but monotonic (elapsed?)
-    });
+    _ev = _ev || {};
+
+    var _evCfg = {};
+    _evCfg.type = type;
+    if ('bubbles' in evInit) {
+      _evCfg.bubbles = evInit.bubbles;
+    }
+    if ('cancelable' in evInit) {
+      _evCfg.cancelable = evInit.cancelable;
+    }
+    if ('composed' in evInit) {
+      _evCfg.composed = evInit.composed;
+    }
+
+    // _evCfg.isTrusted = true; // We are not always using this for user-created events
+    // _evCfg.timeStamp = new Date().valueOf(); // This is no longer a timestamp, but monotonic (elapsed?)
+
+    ev.set(this, _ev);
+    evCfg.set(this, _evCfg);
+    Object.defineProperties(this,
+      ['target', 'currentTarget', 'eventPhase', 'defaultPrevented'].reduce(function (obj, prop) {
+        obj[prop] = {
+          get: function () {
+            return (/* prop in _evCfg && */ _evCfg[prop] !== undefined) ? _evCfg[prop] : (
+              prop in _ev ? _ev[prop] : (
+                // Defaults
+                prop === 'eventPhase' ? 0 : (prop === 'defaultPrevented' ? false : null)
+              )
+            );
+          }
+        };
+        return obj;
+      }, {})
+    );
+    var props = [
+      // Event
+      'type',
+      'bubbles', 'cancelable', // Defaults to false
+      'isTrusted', 'timeStamp',
+      // Other event properties (not used by our code)
+      'composedPath', 'composed', 'initEvent', 'initCustomEvent'
+    ];
+    if (this.toString() === '[object CustomEvent]') {
+      props.push('detail');
+    }
+
+    Object.defineProperties(this, props.reduce(function (obj, prop) {
+      obj[prop] = {
+        get: function () {
+          return prop in _evCfg ? _evCfg[prop] : (prop in _ev ? _ev[prop] : (
+            ['bubbles', 'cancelable', 'composed'].indexOf(prop) > -1 ? false : undefined
+          ));
+        }
+      };
+      return obj;
+    }, {}));
   };
   Object.defineProperties(EventPolyfill.prototype, {
     NONE: {writable: false, value: 0},
@@ -61,60 +110,42 @@ var DOMException, Proxy, Event, ErrorEvent;
     AT_TARGET: {writable: false, value: 2},
     BUBBLING_PHASE: {writable: false, value: 3}
   });
+  EventPolyfill.prototype.preventDefault = function () {
+    var _ev = ev.get(this);
+    var _evCfg = evCfg.get(this);
+    if (this.cancelable && !_evCfg._passive) {
+      _evCfg.defaultPrevented = true;
+      if (typeof _ev.preventDefault === 'function') { // Prevent any predefined defaults
+        _ev.preventDefault();
+      }
+    };
+  };
+  EventPolyfill.prototype.stopImmediatePropagation = function () {
+    var _evCfg = evCfg.get(this);
+    _evCfg._stopImmediatePropagation = true;
+  };
+  EventPolyfill.prototype.stopPropagation = function () {
+    var _evCfg = evCfg.get(this);
+    _evCfg._stopPropagation = true;
+  };
   EventPolyfill.prototype.toString = function () {
     return '[object Event]';
   };
 
-  function copyEvent (ev) {
-    return new EventPolyfill(ev.type, {bubbles: ev.bubbles, cancelable: ev.cancelable});
-  }
+  var CustomEventPolyfill = function (type, eventInitDict, _ev) {
+    EventPolyfill.call(this, type, eventInitDict, _ev);
+    var _evCfg = evCfg.get(this);
+    _evCfg.detail = eventInitDict && typeof eventInitDict === 'object' ? eventInitDict.detail : null;
+  };
+  CustomEventPolyfill.prototype.toString = function () {
+    return '[object CustomEvent]';
+  };
 
-  if (typeof Proxy === 'undefined') { // Remove when Proxies well supported: http://caniuse.com/#feat=proxy
-    Proxy = ProxyPolyfill = function ProxyPolyfill (ev /* , handler*/) {
-      this._ev = ev;
-      Object.defineProperties(this,
-        ['target', 'currentTarget', 'eventPhase', 'defaultPrevented'].reduce(function (obj, prop) {
-          obj[prop] = {get: function () {
-            return (('_' + prop) in this && this['_' + prop] !== undefined) ? this['_' + prop] : this._ev[prop];
-          }, set: function (val) {
-            this['_' + prop] = val;
-          }};
-          obj['_' + prop] = {enumerable: false, writable: true};
-          return obj;
-        }, {})
-      );
-      Object.defineProperties(this,
-        [
-          // Event
-          'type', 'NONE', 'CAPTURING_PHASE', 'AT_TARGET', 'BUBBLING_PHASE',
-          'bubbles', 'cancelable', 'isTrusted', 'timeStamp',
-          // Other event properties (not used by our code)
-          'composedPath', 'composed', 'initEvent',
-          // CustomEvent
-          'detail'
-        ].reduce(function (obj, prop) {
-          obj[prop] = {get: function () {
-            return this._ev[prop];
-          }, set: function (val) {
-            this._ev[prop] = val;
-          }};
-          return obj;
-        }, {})
-      );
-    };
-    Proxy.prototype.preventDefault = function () { // eslint-disable-line no-extend-native
-      if (typeof this._ev.preventDefault === 'function') {
-        this._ev.preventDefault();
-        return;
-      }
-      if (this.cancelable && !this._passive) this.defaultPrevented = true;
-    };
-    Proxy.prototype.stopImmediatePropagation = function () { // eslint-disable-line no-extend-native
-      this._stopImmediatePropagation = true;
-    };
-    Proxy.prototype.stopPropagation = function () { // eslint-disable-line no-extend-native
-      this._stopPropagation = true;
-    };
+  function copyEvent (ev) {
+    if ('detail' in ev) {
+      return new CustomEventPolyfill(ev.type, {bubbles: ev.bubbles, cancelable: ev.cancelable, detail: ev.detail}, ev);
+    }
+    return new EventPolyfill(ev.type, {bubbles: ev.bubbles, cancelable: ev.cancelable}, ev);
   }
 
   function getListenersOptions (listeners, type, options) {
@@ -199,167 +230,126 @@ var DOMException, Proxy, Event, ErrorEvent;
         if (!this[arrStr]) Object.defineProperty(this, arrStr, {value: {}});
       }, this);
 
-      if (setTarget && ev._dispatched) throw new DOMException('The object is in an invalid state.', 'InvalidStateError');
-      ev._dispatched = true;
+      var _evCfg = evCfg.get(ev);
+      if (!_evCfg) { // Todo: Is this ok?
+        _evCfg = evCfg.set(ev, {});
+      }
+      if (setTarget && _evCfg._dispatched) throw new DOMException('The object is in an invalid state.', 'InvalidStateError');
 
-      var type = ev.type;
-      if (!type || typeof type !== 'string') throw new TypeError('Invalid type');
-
-      var handler = {
-        // Avoid readonly
-        get: function (ev, prop) {
-          if (['preventDefault', 'stopImmediatePropagation', 'stopPropagation'].includes(prop)) {
-            switch (prop) {
-              case 'preventDefault': // Doesn't affect propagation
-                return typeof ev[prop] === 'function' ? ev[prop] : function () {
-                  if (eventProxy.cancelable && !eventProxy._passive) {
-                    eventProxy.defaultPrevented = true;
-                  }
-                };
-              case 'stopImmediatePropagation': // Doesn't affect default
-                return function () {
-                  eventProxy._stopImmediatePropagation = true;
-                };
-              case 'stopPropagation':
-                return function () { // Doesn't affect default
-                  eventProxy._stopPropagation = true;
-                };
-            }
-          }
-          if (['target', 'currentTarget', 'eventPhase', 'defaultPrevented'].includes(prop) && ('_' + prop) in ev) {
-            return ev['_' + prop];
-          }
-          return ev[prop];
-        },
-        set: function (ev, prop, value) {
-          if (['target', 'currentTarget', 'eventPhase', 'defaultPrevented'].includes(prop)) {
-            ev['_' + prop] = value;
-          } else {
-            ev[prop] = value;
-          }
-          return true;
-        }
-      };
-      var eventProxy;
-      if (ev.isProxified) {
-        eventProxy = ev;
+      var eventCopy;
+      if (_evCfg._dispatched) {
+        eventCopy = ev;
       } else {
-        eventProxy = new Proxy(copyEvent(ev), handler);
-        eventProxy.isProxified = true;
-        [
-          'target', 'currentTarget', 'defaultPrevented',
-          'isTrusted', 'timeStamp',
-          // Other event properties (not used by our code)
-          'composedPath', 'composed', 'initEvent',
-          // CustomEvent
-          'detail',
-          // Our own properties
-          '_dispatched', '_stopImmediatePropagation', '_stopPropagation'
-        ].concat(this._extraProperties || []).forEach(function (prop) {
+        eventCopy = copyEvent(ev);
+        _evCfg = evCfg.get(eventCopy);
+        _evCfg._dispatched = true;
+        (this._extraProperties || []).forEach(function (prop) {
           if (prop in ev) {
-            eventProxy[prop] = ev[prop];
+            eventCopy[prop] = ev[prop]; // Todo: Put internal to EventPolyfill?
           }
         });
       }
+      var type = eventCopy.type;
 
       function finishEventDispatch () {
-        eventProxy.eventPhase = phases.NONE;
-        eventProxy.currentTarget = null;
-        delete eventProxy._children;
+        _evCfg.eventPhase = phases.NONE;
+        _evCfg.currentTarget = null;
+        delete _evCfg._children;
       }
       function invokeDefaults () {
         // Ignore stopPropagation from defaults
-        eventProxy._stopImmediatePropagation = undefined;
-        eventProxy._stopPropagation = undefined;
+        _evCfg._stopImmediatePropagation = undefined;
+        _evCfg._stopPropagation = undefined;
         // We check here for whether we should invoke since may have changed since timeout (if late listener prevented default)
-        if (!eventProxy.defaultPrevented || !eventProxy.cancelable) { // 2nd check should be redundant
-          eventProxy.eventPhase = phases.AT_TARGET; // Temporarily set before we invoke default listeners
-          eventProxy.target.invokeCurrentListeners(eventProxy.target._defaultListeners, eventProxy, type);
+        if (!eventCopy.defaultPrevented || !_evCfg.cancelable) { // 2nd check should be redundant
+          _evCfg.eventPhase = phases.AT_TARGET; // Temporarily set before we invoke default listeners
+          eventCopy.target.invokeCurrentListeners(eventCopy.target._defaultListeners, eventCopy, type);
         }
         finishEventDispatch();
       }
       function continueEventDispatch () {
         // Ignore stop propagation of user now
-        eventProxy._stopImmediatePropagation = undefined;
-        eventProxy._stopPropagation = undefined;
+        _evCfg._stopImmediatePropagation = undefined;
+        _evCfg._stopPropagation = undefined;
         if (!me._defaultSync) {
           setTimeout(invokeDefaults, 0);
         } else invokeDefaults();
 
-        eventProxy.eventPhase = phases.AT_TARGET; // Temporarily set before we invoke late listeners
+        _evCfg.eventPhase = phases.AT_TARGET; // Temporarily set before we invoke late listeners
         // Sync default might have stopped
-        if (!eventProxy._stopPropagation) {
-          eventProxy._stopImmediatePropagation = undefined;
-          eventProxy._stopPropagation = undefined;
-          // We could allow stopPropagation by only executing upon (eventProxy._stopPropagation)
-          eventProxy.target.invokeCurrentListeners(eventProxy.target._lateListeners, eventProxy, type);
+        if (!_evCfg._stopPropagation) {
+          _evCfg._stopImmediatePropagation = undefined;
+          _evCfg._stopPropagation = undefined;
+          // We could allow stopPropagation by only executing upon (_evCfg._stopPropagation)
+          eventCopy.target.invokeCurrentListeners(eventCopy.target._lateListeners, eventCopy, type);
         }
         finishEventDispatch();
 
-        return !eventProxy.defaultPrevented;
+        return !eventCopy.defaultPrevented;
       }
 
-      if (setTarget) eventProxy.target = this;
+      if (setTarget) _evCfg.target = this;
 
-      switch (eventProxy.eventPhase) {
+      switch (eventCopy.eventPhase) {
         default: case phases.NONE:
 
-          eventProxy.eventPhase = phases.AT_TARGET; // Temporarily set before we invoke early listeners
-          this.invokeCurrentListeners(this._earlyListeners, eventProxy, type);
+          _evCfg.eventPhase = phases.AT_TARGET; // Temporarily set before we invoke early listeners
+          this.invokeCurrentListeners(this._earlyListeners, eventCopy, type);
           if (!this.__getParent) {
-            eventProxy.eventPhase = phases.AT_TARGET;
-            return this._dispatchEvent(eventProxy, false);
+            _evCfg.eventPhase = phases.AT_TARGET;
+            return this._dispatchEvent(eventCopy, false);
           }
 
           var par = this;
           var root = this;
           while (par.__getParent && (par = par.__getParent()) !== null) {
-            if (!eventProxy._children) {
-              eventProxy._children = [];
+            if (!_evCfg._children) {
+              _evCfg._children = [];
             }
-            eventProxy._children.push(root);
+            _evCfg._children.push(root);
             root = par;
           }
           root._defaultSync = me._defaultSync;
-          eventProxy.eventPhase = phases.CAPTURING_PHASE;
-          return root._dispatchEvent(eventProxy, false);
+          _evCfg.eventPhase = phases.CAPTURING_PHASE;
+          return root._dispatchEvent(eventCopy, false);
         case phases.CAPTURING_PHASE:
-          if (eventProxy._stopPropagation) {
+          if (_evCfg._stopPropagation) {
             return continueEventDispatch();
           }
-          this.invokeCurrentListeners(this._listeners, eventProxy, type);
-          var child = eventProxy._children && eventProxy._children.length && eventProxy._children.pop();
-          if (!child || child === eventProxy.target) {
-            eventProxy.eventPhase = phases.AT_TARGET;
+          this.invokeCurrentListeners(this._listeners, eventCopy, type);
+          var child = _evCfg._children && _evCfg._children.length && _evCfg._children.pop();
+          if (!child || child === eventCopy.target) {
+            _evCfg.eventPhase = phases.AT_TARGET;
           }
           if (child) child._defaultSync = me._defaultSync;
-          return (child || this)._dispatchEvent(eventProxy, false);
+          return (child || this)._dispatchEvent(eventCopy, false);
         case phases.AT_TARGET:
-          if (eventProxy._stopPropagation) {
+          if (_evCfg._stopPropagation) {
             return continueEventDispatch();
           }
-          this.invokeCurrentListeners(this._listeners, eventProxy, type, true);
-          if (!eventProxy.bubbles) {
+          this.invokeCurrentListeners(this._listeners, eventCopy, type, true);
+          if (!_evCfg.bubbles) {
             return continueEventDispatch();
           }
-          eventProxy.eventPhase = phases.BUBBLING_PHASE;
-          return this._dispatchEvent(eventProxy, false);
+          _evCfg.eventPhase = phases.BUBBLING_PHASE;
+          return this._dispatchEvent(eventCopy, false);
         case phases.BUBBLING_PHASE:
-          if (eventProxy._stopPropagation) {
+          if (_evCfg._stopPropagation) {
             return continueEventDispatch();
           }
           var parent = this.__getParent && this.__getParent();
           if (!parent) {
             return continueEventDispatch();
           }
-          parent.invokeCurrentListeners(parent._listeners, eventProxy, type, true);
+          parent.invokeCurrentListeners(parent._listeners, eventCopy, type, true);
           parent._defaultSync = me._defaultSync;
-          return parent._dispatchEvent(eventProxy, false);
+          return parent._dispatchEvent(eventCopy, false);
       }
     },
-    invokeCurrentListeners: function (listeners, eventProxy, type, checkOnListeners) {
+    invokeCurrentListeners: function (listeners, eventCopy, type, checkOnListeners) {
+      var _evCfg = evCfg.get(eventCopy);
       var me = this;
-      eventProxy.currentTarget = this;
+      _evCfg.currentTarget = this;
 
       var listOpts = getListenersOptions(listeners, type, {});
       var listenersByType = listOpts.listenersByType.concat();
@@ -367,14 +357,14 @@ var DOMException, Proxy, Event, ErrorEvent;
 
       listenersByType.some(function (listenerObj, i) {
         var onListener = checkOnListeners ? me['on' + type] : null;
-        if (eventProxy._stopImmediatePropagation) return true;
+        if (_evCfg._stopImmediatePropagation) return true;
         if (i === dummyIPos && typeof onListener === 'function') {
           // We don't splice this in as could be overwritten; executes here per
           //  https://html.spec.whatwg.org/multipage/webappapis.html#event-handler-attributes:event-handlers-14
           this.tryCatch(function () {
-            var ret = onListener.call(eventProxy.currentTarget, eventProxy);
+            var ret = onListener.call(eventCopy.currentTarget, eventCopy);
             if (ret === false) {
-              eventProxy.preventDefault();
+              eventCopy.preventDefault();
             }
           });
         }
@@ -382,15 +372,15 @@ var DOMException, Proxy, Event, ErrorEvent;
         var once = options.once; // Remove listener after invoking once
         var passive = options.passive; // Don't allow `preventDefault`
         var capture = options.capture; // Use `_children` and set `eventPhase`
-        eventProxy._passive = passive;
+        _evCfg._passive = passive;
 
-        if ((capture && eventProxy.target !== eventProxy.currentTarget && eventProxy.eventPhase === phases.CAPTURING_PHASE) ||
-          (eventProxy.eventPhase === phases.AT_TARGET ||
-          (!capture && eventProxy.target !== eventProxy.currentTarget && eventProxy.eventPhase === phases.BUBBLING_PHASE))
+        if ((capture && eventCopy.target !== eventCopy.currentTarget && eventCopy.eventPhase === phases.CAPTURING_PHASE) ||
+          (eventCopy.eventPhase === phases.AT_TARGET ||
+          (!capture && eventCopy.target !== eventCopy.currentTarget && eventCopy.eventPhase === phases.BUBBLING_PHASE))
         ) {
           var listener = listenerObj.listener;
           this.tryCatch(function () {
-            listener.call(eventProxy.currentTarget, eventProxy);
+            listener.call(eventCopy.currentTarget, eventCopy);
           });
           if (once) {
             this.removeEventListener(type, listener, options);
@@ -400,14 +390,14 @@ var DOMException, Proxy, Event, ErrorEvent;
       this.tryCatch(function () {
         var onListener = checkOnListeners ? me['on' + type] : null;
         if (typeof onListener === 'function' && listenersByType.length < 2) {
-          var ret = onListener.call(eventProxy.currentTarget, eventProxy); // Won't have executed if too short
+          var ret = onListener.call(eventCopy.currentTarget, eventCopy); // Won't have executed if too short
           if (ret === false) {
-            eventProxy.preventDefault();
+            eventCopy.preventDefault();
           }
         }
       });
 
-      return !eventProxy.defaultPrevented;
+      return !eventCopy.defaultPrevented;
     },
     tryCatch: function (cb) {
       try {
@@ -468,13 +458,11 @@ var DOMException, Proxy, Event, ErrorEvent;
     }
   });
 
-  EventTarget.Event = Event;
+  // Todo: Move to own library (but allowing WeakMaps to be passed in for sharing here)
   EventTarget.EventPolyfill = EventPolyfill;
+  EventTarget.CustomEventPolyfill = CustomEventPolyfill;
   EventTarget.ErrorEventPolyfill = ErrorEvent;
-  EventTarget.ProxyPolyfill = ProxyPolyfill;
   EventTarget.DOMException = DOMException;
-  EventTarget.Error = Error;
-  EventTarget.TypeError = TypeError;
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = EventTarget;
