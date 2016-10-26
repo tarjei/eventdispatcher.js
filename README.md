@@ -1,6 +1,7 @@
 # eventtarget
 
-JavaScript events for custom objects
+Add familiar, standard JavaScript event handling methods for custom objects based on
+[EventTarget](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget).
 
 ## Installation
 
@@ -166,6 +167,8 @@ The following are non-standard methods:
 -   Use babel and ES6 Symbols, e.g., for bubbling state, parents (or
     getParent), children (for capturing), parent names/paths, etc.
     to provide safer namespacing of properties?
+
+-   Add `getEventHandler` and `setEventHandler` methods (ala Mozilla)?
 
 -   Demo `click()` (for capturing/bubbling/propagation) and
     `submit()` (for default and default prevention) on implementations on JSON.
