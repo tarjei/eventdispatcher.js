@@ -1,4 +1,4 @@
-var DOMException, ErrorEvent;
+var DOMException;
 (function () {
   'use strict';
 
@@ -15,26 +15,6 @@ var DOMException, ErrorEvent;
       var err = new Error(msg);
       err.name = name;
       return err;
-    };
-  }
-  if (typeof ErrorEvent === 'undefined') {
-    ErrorEvent = function (type, eventInitDict) {
-      EventPolyfill.call(this, type, eventInitDict);
-      var def = {};
-      def.message = eventInitDict.message || '';
-      def.filename = eventInitDict.filename || '';
-      def.lineno = eventInitDict.lineno || 0;
-      def.colno = eventInitDict.colno || 0;
-      def.error = eventInitDict.error || null;
-
-      Object.defineProperties(this, ['message', 'filename', 'lineno', 'colno', 'error'].reduce(function (obj, prop) {
-        obj[prop] = {
-          get: function () {
-            return def[prop];
-          }
-        };
-        return obj;
-      }, {}));
     };
   }
 
@@ -419,7 +399,9 @@ var DOMException, ErrorEvent;
       }
 
       var triggerGlobalErrorEvent;
-      if (typeof window === 'undefined' || (window && typeof window === 'object' && !window.dispatchEvent)) {
+      if (typeof window === 'undefined' || typeof ErrorEvent === 'undefined' || (
+          window && typeof window === 'object' && !window.dispatchEvent)
+      ) {
         triggerGlobalErrorEvent = function () {
           setTimeout(function () { // Node won't be able to catch in this way if we throw in the main thread
             // console.log(err); // Should we auto-log for user?
@@ -461,7 +443,6 @@ var DOMException, ErrorEvent;
   // Todo: Move to own library (but allowing WeakMaps to be passed in for sharing here)
   EventTarget.EventPolyfill = EventPolyfill;
   EventTarget.CustomEventPolyfill = CustomEventPolyfill;
-  EventTarget.ErrorEventPolyfill = ErrorEvent;
   EventTarget.DOMException = DOMException;
 
   if (typeof module !== 'undefined' && module.exports) {
