@@ -170,5 +170,7 @@ The following are non-standard methods:
 
 -   Add `getEventHandler` and `setEventHandler` methods (ala Mozilla)?
 
+-   See `todo`'s' within code.
+
 -   Demo `click()` (for capturing/bubbling/propagation) and
     `submit()` (for default and default prevention) on implementations on JSON.
