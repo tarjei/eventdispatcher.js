@@ -22,6 +22,11 @@ var DOMException;
   var evCfg = new WeakMap();
 
   // Todo: Set _ev argument outside of this function
+  /**
+  * We use an adapter class rather than a proxy not only for compatibility but also since we have to clone
+  * native event properties anyways in order to properly set `target`, etc.
+  * @note The regular DOM method `dispatchEvent` won't work with this polyfill as it expects a native event
+  */
   var EventPolyfill = function EventPolyfill (type, evInit, _ev) { // eslint-disable-line no-native-reassign
     if (!arguments.length) {
       throw new TypeError("Failed to construct 'Event': 1 argument required, but only 0 present.");
@@ -225,7 +230,7 @@ var DOMException;
         _evCfg._dispatched = true;
         (this._extraProperties || []).forEach(function (prop) {
           if (prop in ev) {
-            eventCopy[prop] = ev[prop]; // Todo: Put internal to EventPolyfill?
+            eventCopy[prop] = ev[prop]; // Todo: Put internal to `EventPolyfill`?
           }
         });
       }

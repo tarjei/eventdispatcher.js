@@ -146,31 +146,27 @@ The following are non-standard methods:
     by users in their own `dispatchEvent` calls (which shouldn't ever throw
     as that would be non-standard for the real `EventTarget`).
 
-## Todos
+## Possible to-dos
+
+-   See `todo`'s' within code.
 
 -   Support `worker.onerror`
 
--   Consider refactoring so that all properties and methods are private and
+-   Allow `__getParent` to return a promise to allow async bubbling
+
+-   Consider refactoring so that all methods (as with properties) are private and
     all early/late/default listeners, parent retrieval, and option setting are
-    done at class creation time (dynamically). Remove `hasEventListener` as
-    it is necessarily run-time and non-standard.
-
--   Refactor out the proxy in favor of just an adapter (since we have to clone
-    native event properties anyways in order to properly set `target`, etc.).
-
--   Provide option for early, late, and default listeners to capture and
-    bubble (will need to propagate independently of normal listeners).
-
--   Add another type of late listener or config which executes even
-    after async default?
-
--   Use babel and ES6 Symbols, e.g., for bubbling state, parents (or
-    getParent), children (for capturing), parent names/paths, etc.
-    to provide safer namespacing of properties?
+    done dynamically at class creation time or, alternatively, at any time via
+    ES6 Symbols (Babel) which are somewhat more "safely" namespaced. Remove
+    `hasEventListener` as it is necessarily run-time and non-standard.
 
 -   Add `getEventHandler` and `setEventHandler` methods (ala Mozilla)?
 
--   See `todo`'s' within code.
+-   Provide option for early, late, and default listeners to capture and
+    bubble (will need to propagate independently of normal listeners)?
+
+-   Add another type of late listener or config which executes even
+    after async default?
 
 -   Demo `click()` (for capturing/bubbling/propagation) and
     `submit()` (for default and default prevention) on implementations on JSON.
