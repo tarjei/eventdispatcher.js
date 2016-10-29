@@ -216,13 +216,10 @@ var DOMException;
       }, this);
 
       var _evCfg = evCfg.get(ev);
-      if (!_evCfg) { // Todo: Is this ok?
-        _evCfg = evCfg.set(ev, {});
-      }
-      if (setTarget && _evCfg._dispatched) throw new DOMException('The object is in an invalid state.', 'InvalidStateError');
+      if (_evCfg && setTarget && _evCfg._dispatched) throw new DOMException('The object is in an invalid state.', 'InvalidStateError');
 
       var eventCopy;
-      if (_evCfg._dispatched) {
+      if (_evCfg) {
         eventCopy = ev;
       } else {
         eventCopy = copyEvent(ev);
