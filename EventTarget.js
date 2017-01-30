@@ -1,7 +1,7 @@
-var DOMException;
 (function () {
   'use strict';
 
+  var ShimDOMException;
   var phases = {
     NONE: 0,
     CAPTURING_PHASE: 1,
@@ -11,11 +11,13 @@ var DOMException;
 
   if (typeof DOMException === 'undefined') {
     // Todo: Better polyfill (if even needed here)
-    DOMException = function (msg, name) { // No need for `toString` as same as for `Error`
+    ShimDOMException = function DOMException (msg, name) { // No need for `toString` as same as for `Error`
       var err = new Error(msg);
       err.name = name;
       return err;
     };
+  } else {
+    ShimDOMException = DOMException;
   }
 
   var ev = new WeakMap();
@@ -27,7 +29,14 @@ var DOMException;
   * native event properties anyways in order to properly set `target`, etc.
   * @note The regular DOM method `dispatchEvent` won't work with this polyfill as it expects a native event
   */
-  var EventPolyfill = function EventPolyfill (type, evInit, _ev) { // eslint-disable-line no-native-reassign
+  var ShimEvent = function Event (type) { // eslint-disable-line no-native-reassign
+    // For WebIDL checks of function's `length`, we check `arguments` for the optional arguments
+    this[Symbol.toStringTag] = 'Event';
+    this.toString = function () {
+      return '[object Event]';
+    };
+    var evInit = arguments[1];
+    var _ev = arguments[2];
     if (!arguments.length) {
       throw new TypeError("Failed to construct 'Event': 1 argument required, but only 0 present.");
     }
@@ -35,13 +44,6 @@ var DOMException;
     _ev = _ev || {};
 
     var _evCfg = {};
-    _evCfg.type = type;
-    if ('bubbles' in evInit) {
-      _evCfg.bubbles = evInit.bubbles;
-    }
-    if ('cancelable' in evInit) {
-      _evCfg.cancelable = evInit.cancelable;
-    }
     if ('composed' in evInit) {
       _evCfg.composed = evInit.composed;
     }
@@ -51,6 +53,7 @@ var DOMException;
 
     ev.set(this, _ev);
     evCfg.set(this, _evCfg);
+    this.initEvent(type, evInit.bubbles, evInit.cancelable);
     Object.defineProperties(this,
       ['target', 'currentTarget', 'eventPhase', 'defaultPrevented'].reduce(function (obj, prop) {
         obj[prop] = {
@@ -71,11 +74,12 @@ var DOMException;
       'type',
       'bubbles', 'cancelable', // Defaults to false
       'isTrusted', 'timeStamp',
+      'initEvent',
       // Other event properties (not used by our code)
-      'composedPath', 'composed', 'initEvent', 'initCustomEvent'
+      'composedPath', 'composed'
     ];
     if (this.toString() === '[object CustomEvent]') {
-      props.push('detail');
+      props.push('detail', 'initCustomEvent');
     }
 
     Object.defineProperties(this, props.reduce(function (obj, prop) {
@@ -89,13 +93,11 @@ var DOMException;
       return obj;
     }, {}));
   };
-  Object.defineProperties(EventPolyfill.prototype, {
-    NONE: {writable: false, value: 0},
-    CAPTURING_PHASE: {writable: false, value: 1},
-    AT_TARGET: {writable: false, value: 2},
-    BUBBLING_PHASE: {writable: false, value: 3}
-  });
-  EventPolyfill.prototype.preventDefault = function () {
+
+  ShimEvent.prototype.preventDefault = function () {
+    if (!(this instanceof ShimEvent)) {
+      throw new TypeError('Illegal invocation');
+    }
     var _ev = ev.get(this);
     var _evCfg = evCfg.get(this);
     if (this.cancelable && !_evCfg._passive) {
@@ -105,32 +107,124 @@ var DOMException;
       }
     };
   };
-  EventPolyfill.prototype.stopImmediatePropagation = function () {
+  ShimEvent.prototype.stopImmediatePropagation = function () {
     var _evCfg = evCfg.get(this);
     _evCfg._stopImmediatePropagation = true;
   };
-  EventPolyfill.prototype.stopPropagation = function () {
+  ShimEvent.prototype.stopPropagation = function () {
     var _evCfg = evCfg.get(this);
     _evCfg._stopPropagation = true;
   };
-  EventPolyfill.prototype.toString = function () {
-    return '[object Event]';
-  };
-
-  var CustomEventPolyfill = function (type, eventInitDict, _ev) {
-    EventPolyfill.call(this, type, eventInitDict, _ev);
+  ShimEvent.prototype.initEvent = function (type, bubbles, cancelable) {  // Chrome currently has function length 1 only but WebIDL says 3
+    // var bubbles = arguments[1];
+    // var cancelable = arguments[2];
     var _evCfg = evCfg.get(this);
-    _evCfg.detail = eventInitDict && typeof eventInitDict === 'object' ? eventInitDict.detail : null;
+
+    if (_evCfg._dispatched) {
+      return;
+    }
+
+    _evCfg.type = type;
+    if (bubbles !== undefined) {
+      _evCfg.bubbles = bubbles;
+    }
+    if (cancelable !== undefined) {
+      _evCfg.cancelable = cancelable;
+    }
   };
-  CustomEventPolyfill.prototype.toString = function () {
-    return '[object CustomEvent]';
+  ['type', 'target', 'currentTarget'].forEach(function (prop) {
+    Object.defineProperty(ShimEvent.prototype, prop, {
+      enumerable: true,
+      configurable: true,
+      get: function () {
+        throw new TypeError('Illegal invocation');
+      }
+    });
+  });
+  ['eventPhase', 'defaultPrevented', 'bubbles', 'cancelable', 'timeStamp'].forEach(function (prop) {
+    Object.defineProperty(ShimEvent.prototype, prop, {
+      enumerable: true,
+      configurable: true,
+      get: function () {
+        throw new TypeError('Illegal invocation');
+      }
+    });
+  });
+  ['NONE', 'CAPTURING_PHASE', 'AT_TARGET', 'BUBBLING_PHASE'].forEach(function (prop, i) {
+    Object.defineProperty(ShimEvent, prop, {
+      enumerable: true,
+      writable: false,
+      value: i
+    });
+    Object.defineProperty(ShimEvent.prototype, prop, {
+      writable: false,
+      value: i
+    });
+  });
+  ShimEvent[Symbol.toStringTag] = 'Function';
+  ShimEvent.prototype[Symbol.toStringTag] = 'EventPrototype';
+  Object.defineProperty(ShimEvent, 'prototype', {
+    writable: false
+  });
+
+  var ShimCustomEvent = function CustomEvent (type) {
+    var eventInitDict = arguments[1];
+    var _ev = arguments[2];
+    ShimEvent.call(this, type, eventInitDict, _ev);
+    this[Symbol.toStringTag] = 'CustomEvent';
+    this.toString = function () {
+      return '[object CustomEvent]';
+    };
+    var _evCfg = evCfg.get(this);
+    eventInitDict = eventInitDict || {};
+    this.initCustomEvent(type, evInit.bubbles, evInit.cancelable, 'detail' in evInit ? evInit.detail : null);
   };
+  Object.defineProperty(ShimCustomEvent.prototype, 'constructor', {
+      enumerable: false,
+      writable: true,
+      configurable: true,
+      value: ShimCustomEvent
+  });
+  ShimCustomEvent.prototype.initCustomEvent = function (type, bubbles, cancelable, detail) {
+    if (!(this instanceof ShimCustomEvent)) {
+        throw new TypeError('Illegal invocation');
+    }
+    var _evCfg = evCfg.get(this);
+    ShimCustomEvent.call(this, type, {bubbles: bubbles, cancelable: cancelable, detail: detail}, arguments[4]);
+
+    if (_evCfg._dispatched) {
+      return;
+    }
+
+    if (detail !== undefined) {
+      _evCfg.detail = detail;
+    }
+    Object.defineProperty(this, 'detail', {
+        get: function () {
+            return _evCfg.detail;
+        }
+    });
+  };
+  ShimCustomEvent[Symbol.toStringTag] = 'Function';
+  ShimCustomEvent.prototype[Symbol.toStringTag] = 'CustomEventPrototype';
+  Object.setPrototypeOf(ShimCustomEvent, ShimEvent); // TODO: IDL needs but reported as slow!
+  Object.defineProperty(ShimCustomEvent.prototype, 'detail', {
+    enumerable: true,
+    configurable: true,
+    get: function () {
+      throw new TypeError('Illegal invocation');
+    }
+  });
+  Object.setPrototypeOf(ShimCustomEvent.prototype, ShimEvent.prototype); // TODO: IDL needs but reported as slow!
+  Object.defineProperty(ShimCustomEvent, 'prototype', {
+      writable: false
+  });
 
   function copyEvent (ev) {
     if ('detail' in ev) {
-      return new CustomEventPolyfill(ev.type, {bubbles: ev.bubbles, cancelable: ev.cancelable, detail: ev.detail}, ev);
+      return new ShimCustomEvent(ev.type, {bubbles: ev.bubbles, cancelable: ev.cancelable, detail: ev.detail}, ev);
     }
-    return new EventPolyfill(ev.type, {bubbles: ev.bubbles, cancelable: ev.cancelable}, ev);
+    return new ShimEvent(ev.type, {bubbles: ev.bubbles, cancelable: ev.cancelable}, ev);
   }
 
   function getListenersOptions (listeners, type, options) {
@@ -180,15 +274,16 @@ var DOMException;
     }
   };
 
-  function EventTarget (customOptions) {
-    this.__setOptions(customOptions);
+  function EventTarget () {
+    throw new TypeError('Illegal constructor');
   }
 
   Object.assign(EventTarget.prototype, ['Early', '', 'Late', 'Default'].reduce(function (obj, listenerType) {
     ['add', 'remove', 'has'].forEach(function (method) {
-      obj[method + listenerType + 'EventListener'] = function (type, listener, options) {
+      obj[method + listenerType + 'EventListener'] = function (type, listener) {
+        var options = arguments[2]; // We keep the listener `length` as per WebIDL
         if (arguments.length < 2) throw new TypeError('2 or more arguments required');
-        if (typeof type !== 'string') throw new DOMException('UNSPECIFIED_EVENT_TYPE_ERR', 'UNSPECIFIED_EVENT_TYPE_ERR'); // eslint-disable-line eqeqeq
+        if (typeof type !== 'string') throw new ShimDOMException('UNSPECIFIED_EVENT_TYPE_ERR', 'UNSPECIFIED_EVENT_TYPE_ERR'); // eslint-disable-line eqeqeq
         if (listener.handleEvent) { listener = listener.handleEvent.bind(listener); }
         var arrStr = '_' + listenerType.toLowerCase() + (listenerType === '' ? 'l' : 'L') + 'isteners';
         if (!this[arrStr]) Object.defineProperty(this, arrStr, {value: {}});
@@ -216,7 +311,7 @@ var DOMException;
       }, this);
 
       var _evCfg = evCfg.get(ev);
-      if (_evCfg && setTarget && _evCfg._dispatched) throw new DOMException('The object is in an invalid state.', 'InvalidStateError');
+      if (_evCfg && setTarget && _evCfg._dispatched) throw new ShimDOMException('The object is in an invalid state.', 'InvalidStateError');
 
       var eventCopy;
       if (_evCfg) {
@@ -227,7 +322,7 @@ var DOMException;
         _evCfg._dispatched = true;
         (this._extraProperties || []).forEach(function (prop) {
           if (prop in ev) {
-            eventCopy[prop] = ev[prop]; // Todo: Put internal to `EventPolyfill`?
+            eventCopy[prop] = ev[prop]; // Todo: Put internal to `ShimEvent`?
           }
         });
       }
@@ -441,15 +536,29 @@ var DOMException;
       }
     }
   });
+  EventTarget.prototype[Symbol.toStringTag] = 'EventTargetPrototype';
+
+  Object.defineProperty(EventTarget, 'prototype', {
+      writable: false
+  });
+
+  var ShimEventTarget = EventTarget;
+  var EventTargetFactory = {
+    createInstance: function (customOptions) {
+      function EventTarget () {
+        this.__setOptions(customOptions);
+      }
+      EventTarget.prototype = ShimEventTarget.prototype;
+      return new EventTarget();
+    }
+  };
 
   // Todo: Move to own library (but allowing WeakMaps to be passed in for sharing here)
-  EventTarget.EventPolyfill = EventPolyfill;
-  EventTarget.CustomEventPolyfill = CustomEventPolyfill;
-  EventTarget.DOMException = DOMException;
 
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = EventTarget;
-  } else {
-    window.EventTarget = EventTarget;
-  }
+  var exportObj = (typeof module !== 'undefined' && module.exports) ? exports : window;
+  exportObj.ShimEvent = ShimEvent;
+  exportObj.ShimCustomEvent = ShimCustomEvent;
+  exportObj.ShimDOMException = ShimDOMException;
+  exportObj.ShimEventTarget = EventTarget;
+  exportObj.EventTargetFactory = EventTargetFactory;
 }());
