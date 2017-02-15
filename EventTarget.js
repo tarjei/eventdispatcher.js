@@ -491,8 +491,6 @@
       var error = err;
       if (typeof err === 'string') {
         error = new Error('Uncaught exception: ' + err);
-      } else {
-        error.message = 'Uncaught exception: ' + err.message;
       }
 
       var triggerGlobalErrorEvent;
