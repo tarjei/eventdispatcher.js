@@ -150,6 +150,8 @@ The following are non-standard methods:
 
 -   See `todo`'s' within code.
 
+-   Option to set global `event` (Does this redefine or alter the object for capturing, bubbling, etc.?)
+
 -   Support `worker.onerror`
 
 -   Allow `__getParent` to return a promise to allow async bubbling
